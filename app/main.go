@@ -10,6 +10,7 @@ import (
 type DNSMessage struct {
 	Header    DNSHeader
 	Questions []Question
+	Answers   []DNSAnswer
 }
 
 // DNSHeader represents the DNS header section
@@ -27,6 +28,16 @@ type Question struct {
 	QName  []byte
 	QType  uint16
 	QClass uint16
+}
+
+// DNSAnswer represents a DNS answer section
+type DNSAnswer struct {
+	Name     []byte
+	Type     uint16
+	Class    uint16
+	TTL      uint32
+	RDLength uint16
+	RData    []byte
 }
 
 // DNSServer handles DNS server operations
@@ -166,15 +177,51 @@ func (msg *DNSMessage) Parse(data []byte) error {
 
 // BuildResponse creates a response message based on the request
 func (msg *DNSMessage) BuildResponse() DNSMessage {
+	header := msg.Header.BuildResponse()
+	header.ANCount = uint16(len(msg.Questions))
+
 	response := DNSMessage{
-		Header:    msg.Header.BuildResponse(),
+		Header:    header,
 		Questions: make([]Question, len(msg.Questions)),
+		Answers:   make([]DNSAnswer, 0, len(msg.Questions)),
 	}
 
-	// Copy questions to response
-	copy(response.Questions, msg.Questions)
+	// Copy questions and add dummy A records for each
+	for i, q := range msg.Questions {
+		response.Questions[i] = q
+		response.Answers = append(response.Answers, DNSAnswer{
+			Name:     q.QName,
+			Type:     1,      // A record
+			Class:    1,      // IN class
+			TTL:      60,     // 60 seconds
+			RDLength: 4,      // 4 bytes for IPv4
+			RData:    []byte{8, 8, 8, 8},
+		})
+	}
 
 	return response
+}
+
+// Encode converts a DNS Answer to bytes
+func (a *DNSAnswer) Encode() []byte {
+	// total length: Name + Type(2) + Class(2) + TTL(4) + RDLength(2) + RData
+	buf := make([]byte, len(a.Name)+10+len(a.RData))
+
+	offset := 0
+	copy(buf[offset:], a.Name)
+	offset += len(a.Name)
+
+	binary.BigEndian.PutUint16(buf[offset:], a.Type)
+	offset += 2
+	binary.BigEndian.PutUint16(buf[offset:], a.Class)
+	offset += 2
+	binary.BigEndian.PutUint32(buf[offset:], a.TTL)
+	offset += 4
+	binary.BigEndian.PutUint16(buf[offset:], a.RDLength)
+	offset += 2
+	copy(buf[offset:], a.RData)
+
+	return buf
 }
 
 // Encode converts a DNS message to bytes
@@ -184,6 +231,11 @@ func (msg *DNSMessage) Encode() []byte {
 	// Encode questions
 	for _, q := range msg.Questions {
 		buf = append(buf, q.Encode()...)
+	}
+
+	// Encode answers
+	for _, a := range msg.Answers {
+		buf = append(buf, a.Encode()...)
 	}
 
 	return buf
