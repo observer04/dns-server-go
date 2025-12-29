@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
+
+	"github.com/codecrafters-io/dns-server-starter-go/app/dns"
 )
 
 // DNSServer handles DNS server operations
@@ -28,7 +30,7 @@ func NewDNSServer(addr string) (*DNSServer, error) {
 // HandleQuery processes a DNS query and returns the response
 func (s *DNSServer) HandleQuery(data []byte) ([]byte, error) {
 	// Parse the request
-	var request DNSMessage
+	var request dns.DNSMessage
 	if err := request.Parse(data); err != nil {
 		return nil, fmt.Errorf("failed to parse request: %v", err)
 	}

@@ -14,7 +14,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("DNS server listening on 127.0.0.1:2053")
+	fmt.Printf("DNS server listening on %s\n", server.conn.LocalAddr().String())
 	if err := server.Run(); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 	}
