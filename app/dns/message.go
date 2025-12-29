@@ -31,6 +31,42 @@ func (msg *DNSMessage) Parse(data []byte) error {
 	return nil
 }
 
+// ParseComplete parses a full DNS message including answers
+func (msg *DNSMessage) ParseComplete(data []byte) error {
+	// Parse header
+	if err := msg.Header.Parse(data); err != nil {
+		return err
+	}
+
+	// Parse questions
+	offset := 12 // Start after header
+	msg.Questions = make([]Question, 0, msg.Header.QDCount)
+
+	for i := uint16(0); i < msg.Header.QDCount; i++ {
+		var q Question
+		bytesRead, err := q.Parse(data, offset)
+		if err != nil {
+			return err
+		}
+		msg.Questions = append(msg.Questions, q)
+		offset = bytesRead
+	}
+
+	// Parse answers
+	msg.Answers = make([]DNSAnswer, 0, msg.Header.ANCount)
+	for i := uint16(0); i < msg.Header.ANCount; i++ {
+		var a DNSAnswer
+		bytesRead, err := a.Parse(data, offset)
+		if err != nil {
+			return err
+		}
+		msg.Answers = append(msg.Answers, a)
+		offset = bytesRead
+	}
+
+	return nil
+}
+
 // BuildResponse creates a response message based on the request
 func (msg *DNSMessage) BuildResponse() DNSMessage {
 	header := msg.Header.BuildResponse()

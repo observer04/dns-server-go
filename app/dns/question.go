@@ -15,7 +15,7 @@ type Question struct {
 // Parse extracts question section from DNS message
 // Returns the number of bytes consumed
 func (q *Question) Parse(data []byte, offset int) (int, error) {
-	name, bytesConsumed, err := decodeName(data, offset)
+	name, bytesConsumed, err := DecodeName(data, offset)
 	if err != nil {
 		return 0, err
 	}
@@ -34,7 +34,7 @@ func (q *Question) Parse(data []byte, offset int) (int, error) {
 	return currentOffset + 4, nil
 }
 
-func decodeName(data []byte, offset int) ([]byte, int, error) {
+func DecodeName(data []byte, offset int) ([]byte, int, error) {
 	var name []byte
 	bytesConsumed := 0
 	currentOffset := offset
